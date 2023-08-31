@@ -1,0 +1,5 @@
+./models/model_SBU_EGNet_ablation/iter_10000.pth ber 10.899530124971124, shadow_ber 19.22009655261658, unshadow ber 2.5789636973256647 --SOBA-Test
+./models/model_SBU_EGNet_ablation/iter_10000.pth ber 3.75256761678377, shadow_ber 6.184989693528253, unshadow ber 1.3201455400392859 --SBU-Test
+./models/model_SBU_EGNet_ablation/iter_10000.pth ber 8.645787790096598, shadow_ber 13.78698774768462, unshadow ber 3.5045878325085877 --UCF
+./models/model_SBU_EGNet_ablation/iter_10000.pth ber 7.417071317209567, shadow_ber 13.49761599613748, unshadow ber 1.3365266382816543 --ISTD-Test
+./models/model_SBU_EGNet_ablation/iter_10000.pth ber 7.298033244066415, shadow_ber 12.905785594859264, unshadow ber 1.6902808932735658 --ISTD-Test-norm

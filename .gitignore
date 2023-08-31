@@ -1,0 +1,13 @@
+*.pt
+*.zip
+*.png
+*.PNG
+*.jpeg
+*.JPEG
+*.jpg
+*.JPG
+*.pyc
+*.pth
+data/
+__pycache__/
+object_recognition_models/data/val/

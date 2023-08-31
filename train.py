@@ -19,14 +19,19 @@ from torchvision.utils import make_grid
 import torchvision.utils as vutils
 
 from networks.MTMT import build_model
-from dataloaders import utils
+#from dataloaders import utils
 from utils import ramps, losses
 from dataloaders.SBU import SBU, relabel_dataset
 from dataloaders import joint_transforms_edge as joint_transforms
 from utils.util import AverageMeter, TwoStreamBatchSampler
+
+#from tensorflow.python.client import device_lib
+#print(device_lib.list_local_devices())
+
 parser = argparse.ArgumentParser()
 # parser.add_argument('--root_path', type=str, default='/home/ext/chenzhihao/Datasets/union-shadow_extend/union-Train', help='Name of Experiment')
-parser.add_argument('--root_path', type=str, default='/home/ext/chenzhihao/Datasets/SBU_USR_manShadow/union-Train', help='Name of Experiment')
+parser.add_argument('--root_path', type=str, default='data/SBU-shadow/SBUTrain4KRecoveredSmall', help='Name of Experiment')
+#parser.add_argument('--root_path', type=str, default='/home/ext/chenzhihao/Datasets/SBU_USR_manShadow/union-Train', help='Name of Experiment')
 parser.add_argument('--exp', type=str,  default='MTMT', help='model_name')
 parser.add_argument('--max_iterations', type=int,  default=10000, help='maximum epoch number to train')
 parser.add_argument('--batch_size', type=int, default=6, help='batch_size per gpu')
@@ -36,7 +41,7 @@ parser.add_argument('--lr_decay', type=float,  default=0.9, help='learning rate 
 parser.add_argument('--edge', type=float, default='10', help='edge learning weight')
 parser.add_argument('--deterministic', type=int,  default=0, help='whether use deterministic training')
 parser.add_argument('--seed', type=int,  default=1337, help='random seed')
-parser.add_argument('--gpu', type=str,  default='1', help='GPU to use')
+parser.add_argument('--gpu', type=str,  default='0', help='GPU to use')
 ### costs
 parser.add_argument('--ema_decay', type=float,  default=0.99, help='ema_decay')
 parser.add_argument('--consistency_type', type=str,  default="mse", help='consistency_type')
@@ -127,9 +132,11 @@ if __name__ == "__main__":
     target_transform = transforms.ToTensor()
     to_pil = transforms.ToPILImage()
 
-    db_train = SBU(root=train_data_path, joint_transform=joint_transform, transform=img_transform, target_transform=target_transform, mod='union', multi_task=True, edge=True)
+    #db_train = SBU(root=train_data_path, joint_transform=joint_transform, transform=img_transform, target_transform=target_transform, mod='union', multi_task=True, edge=True)
+    db_train = SBU(root=train_data_path, joint_transform=joint_transform, transform=img_transform, target_transform=target_transform, mod='union', edge=False)
 
-    labeled_idxs, unlabeled_idxs = relabel_dataset(db_train, edge_able=True)
+    #labeled_idxs, unlabeled_idxs = relabel_dataset(db_train, edge_able=True)
+    labeled_idxs, unlabeled_idxs = relabel_dataset(db_train, edge_able=False)
     batch_sampler = TwoStreamBatchSampler(labeled_idxs, unlabeled_idxs, batch_size, batch_size-labeled_bs)
     def worker_init_fn(worker_id):
         random.seed(args.seed+worker_id)
