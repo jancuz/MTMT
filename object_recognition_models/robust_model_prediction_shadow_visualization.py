@@ -5,30 +5,110 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from tqdm import tqdm
-
-def class_corr_plot():
-    n_examples = 50
-    class_name = 'n07742313'
-    shadow_path = './prediction_ImageNet-val-categories/'+class_name+'/image_shadow.txt'
+import seaborn as sns
+import pandas as pd
 
 
-    # form image-shadow dict
+def read_shadow_amount_info(shadow_path):
+    """
+    Returns dict with image name and shadow amount on the image
+    Input:
+    shadow_path, string - path to the txt file with shadow amount imformation for each image in imagenet val. dataset
+    
+    Output:
+    dict_img_shadow, dict - dict with image name (string) and shadow amount on the image (float)
+
+    """
+    print('Read shadow info...')
     dict_img_shadow = dict()
     for line in open(shadow_path, 'r'):
         lines = [i for i in line.split()]
         dict_img_shadow[lines[0]] = float(lines[4])
+    return dict_img_shadow
 
-    # load test data from one class
+def load_torch_all_test_data(x_test_path = 'x_test.pt', y_test_path = 'y_test.pt', paths_test_path = 'paths_test.pt'):
+    """
+    Returns torch x_test, y_test and paths_test for all imagenet val. dataset from saved files
+
+    Input:
+    x_test_path, y_test_path, paths_test_path, string - paths to the files
+
+    Output:
+    x_test, y_test, paths_test, torch
+
+    """
+    ### you can use the command 'load_imagenet' to load the max. 5000 test data samples
+    #x_test, y_test, paths_test = load_imagenet(n_examples=n_examples)
+    
+    #torch.save(x_test, 'x_test.pt')
+    #torch.save(y_test, 'y_test.pt')
+    #torch.save(paths_test, 'paths_test.pt')
+    
+    print('Load data...')
+    x_test = torch.load(x_test_path)
+    y_test = torch.load(y_test_path)
+    paths_test = torch.load(paths_test_path)
+    print('Data loaded!')
+    return x_test, y_test, paths_test
+
+def robustbench_load_data(n_examples):
+    """
+    Returns n_examples of x_test, y_test, paths_test using robustbench data loading
+
+    """
+    print('Load data...')
     x_test, y_test, paths_test = load_imagenet(n_examples=n_examples)
-    # load model
-    model = load_model(model_name='Liu2023Comprehensive_Swin-L', dataset='imagenet', threat_model='Linf')
-    # model predictions
+    print('Data loaded!')
+    return x_test, y_test, paths_test
+
+def robustbench_model_predictions(model, dataset, threat_model, x_test):
+    """
+    Returns model's predictions and confidence of predictions using Softmax
+
+    Input:
+    model_name, string - name of the model from robustbench table
+    dataset, string - name of the dataset (in our case 'imagenet')
+    threat_model, string - type of corruptions in robustbench table ('Linf' in our case)
+
+    Output:
+    output, torch - model's predictions
+    sm_output, torch - softmax model's predictions
+
+    """
+    print('Model predicts...')
     output = model(x_test)
     predicted_classes = output.max(1)[1]
-
-    #print(model)
     sm = torch.nn.Softmax(dim=1)
     sm_output = sm(output)
+    print('Model Predictions...')
+    return output, sm_output, predicted_classes
+
+def class_info_plot(n_examples = 50, class_name = 'n07742313', shadow_path = './prediction_ImageNet-val-categories/...class_name...+/image_shadow.txt', 
+                    model_name='Liu2023Comprehensive_Swin-L', dataset = 'imagenet', threat_model = 'Linf'):
+    """
+    Build a graph with predicted class probabilities and mismatches for a certain class in imagenet val. dataset
+    (Before requires some tunig for the robustbench library: 
+        1. Combine a .txt file with class and image names: n07742313/ILSVRC2012_val_00043445.JPEG, ...
+        2. Upload the .txt file into robustbench/helper_files folder
+        3. Change path in loaders.py file to the new .txt-file (line 70))
+    
+    Input:
+    n_examples, int - number of samples for a certain class (max 50 for a val. dataset)
+    class_name, string
+    shadow_path, string - path to the txt file with shadow amount imformation for each image in imagenet val. dataset
+    model_name, string - name of the model used from robustbench
+    dataset, string - name of the dataset used for the robustbench
+    
+    Output:
+    save_path, png - statistic visualization of prediction confidence for a certain class saved in a .png file
+    
+    """
+    shadow_path = './prediction_ImageNet-val-categories/'+class_name+'/image_shadow.txt'
+
+    dict_img_shadow = read_shadow_amount_info(shadow_path)
+    x_test, y_test, paths_test = robustbench_load_data(n_examples)
+    model = load_model(model_name=model_name, dataset=dataset, threat_model=threat_model)
+    output, sm_output, predicted_classes = robustbench_model_predictions(model, dataset, threat_model, x_test)
 
     # model prediction statistics
     class_y_probability = []
@@ -40,9 +120,7 @@ def class_corr_plot():
     shadow_no_y = []
     for s in tqdm(range(n_examples)):
         class_y_probability.append(sm_output[s][y_test[s]].item()*100)
-        #print('class_y_probability: ', str(sm_output[s][y_test[s]].item()*100))
         predicted_class_probability.append(sm_output[s].max().item()*100)
-        #print('predicted_class_probability: ', str(sm_output[s].max().item()*100))
         if predicted_classes[s] != y_test[s]:
             missmatch_x.append(s)
             missmatch_y.append(0)
@@ -50,7 +128,6 @@ def class_corr_plot():
         if dict_img_shadow[paths_test[s].split('/')[-1]] == 0:
             shadow_no_x.append(s)
             shadow_no_y.append(0)
-        #print('shadow_a: ', str(dict_img_shadow[paths_test[s].split('/')[-1]]))
 
     acc = (output.max(1)[1] == y_test).float().sum()
     print('correctly predicted from ' + str(n_examples) + ' images: ', str(acc))
@@ -59,7 +136,6 @@ def class_corr_plot():
     plt.figure()    
     plt.title("Shadow amount on ImageNet val. dataset class "+class_name)
     plt.xlabel('Image')
-    #plt.xticks(np.arange(1, n_examples+1))
     plt.ylabel('Shadow Amount, %')
 
     plt.scatter(np.arange(n_examples), class_y_probability, label='Class Y probability')
@@ -71,34 +147,68 @@ def class_corr_plot():
     save_path = './prediction_ImageNet-val-categories/'+class_name+'/shadow_prediction.png'
     plt.savefig(save_path)
 
-def val_shadow_confidence_plot(shadow_path, model_name='Liu2023Comprehensive_Swin-L'):
-    n_examples = 50000
-    dict_img_shadow = dict()
+def val_shadow_confidence_scatter_bar_sns(n_examples = 50000, shadow_path = './shadow_all_classes.txt', model_name = 'Liu2023Comprehensive_Swin-L', 
+                                          dataset='imagenet', threat_model='Linf', 
+                                          x_test_path = 'x_test.pt', y_test_path = 'y_test.pt', paths_test_path = 'paths_test.pt'):
+    """
+    Returns two .png images for correctly classiifed samples and misclassifications with prediction confidence (scatter plot) 
+    and shadow amount and model's confidence distribution (bar plots)
 
-    # write shadow info for each class into one dict
-    # form image-shadow dict
-    print('Read shadow info...')
-    for line in open(shadow_path, 'r'):
-        lines = [i for i in line.split()]
-        dict_img_shadow[lines[0]] = float(lines[4])
-
-    print('Load data...')
-    
-    ### you can use the command 'load_imagenet' to load the max. 5000 test data samples
-    #x_test, y_test, paths_test = load_imagenet(n_examples=n_examples)
-    
-    #torch.save(x_test, 'x_test.pt')
-    #torch.save(y_test, 'y_test.pt')
-    #torch.save(paths_test, 'paths_test.pt')
-    
-    # load all test data
-    x_test = torch.load('x_test.pt')
-    y_test = torch.load('y_test.pt')
-    paths_test = torch.load('paths_test.pt')
-    print('Data loaded!')
+    """
+    dict_img_shadow = read_shadow_amount_info(shadow_path)
+    x_test, y_test, paths_test = load_torch_all_test_data(x_test_path = x_test_path, y_test_path = y_test_path, paths_test_path = paths_test_path)
     print('Load model...')
-    # load model
-    model = load_model(model_name=model_name, dataset='imagenet', threat_model='Linf')
+    model = load_model(model_name = model_name, dataset = dataset, threat_model = threat_model)
+    # model prediction statistics
+    data_correct = []
+    data_misclass = []
+    acc = 0
+    # model predictions were splitted as the size of the torch-tensor was too big
+    step = 100
+    for i in tqdm(range(0, n_examples, step)):
+        output, sm_output, predicted_classes = robustbench_model_predictions(model, dataset, threat_model, x_test[i:i+step])
+        sm_output = sm_output.tolist()
+
+        print('Collect statictics from predictions...')
+        for s in range(i, i+step):
+            if predicted_classes[s-i] != y_test[s]:
+                data_misclass.append([sm_output[s-i][y_test[s]]*100, dict_img_shadow[paths_test[s].split('/')[-1]]])
+            else:
+                data_correct.append([sm_output[s-i][y_test[s]]*100, dict_img_shadow[paths_test[s].split('/')[-1]]])
+
+        acc += (output.max(1)[1] == y_test[i:i+step]).float().sum().item()
+        print('Correctly predicted from ' + str(n_examples) + ' images: ', str(acc))
+        print('Model accuracy: ', str(acc / x_test.shape[0]))
+        del output
+    
+    df_misclass = pd.DataFrame(data_misclass, columns=['mismatch_x_pred_probability', 'mismatch_y_shadow_amount'])
+    df_correct = pd.DataFrame(data_correct, columns=['correctly_class_x_pred_probability', 'correctly_class_y_shadow_amount'])
+
+    sns_correct = sns.jointplot(data=df_correct, x="correctly_class_x_pred_probability", y="correctly_class_y_shadow_amount", marker="o")
+    sns_correct.set_axis_labels("Prediction Confidence, %", "Shadow Amount, %")
+    sns_correct.fig.suptitle("Correctly classified")
+    save_path = './shadow_confidence_prediction_'+model_name+'_correct_test.png'
+    sns_correct.figure.savefig(save_path)
+    print('Data is savede here: ', save_path)
+ 
+    sns_misclass = sns.jointplot(data=df_misclass, x="mismatch_x_pred_probability", y="mismatch_y_shadow_amount", color='orange', marker="o")
+    sns_misclass.set_axis_labels("Prediction Confidence, %", "Shadow Amount, %")
+    sns_misclass.fig.suptitle("Misclassifications")
+    save_path = './shadow_confidence_prediction_'+model_name+'_mismatch_test.png'
+    sns_misclass.figure.savefig(save_path)
+    print('Data is savede here: ', save_path)
+
+def val_shadow_confidence_plot(n_examples = 50000, shadow_path = './shadow_all_classes.txt', 
+                               model_name = 'Liu2023Comprehensive_Swin-L', dataset='imagenet', threat_model='Linf',
+                               x_test_path = 'x_test.pt', y_test_path = 'y_test.pt', paths_test_path = 'paths_test.pt'):
+    """
+    Returns two .png images for correctly classiifed samples and misclassifications with prediction confidence (scatter plot)
+
+    """
+    dict_img_shadow = read_shadow_amount_info(shadow_path)
+    x_test, y_test, paths_test = load_torch_all_test_data(x_test_path = x_test_path, y_test_path = y_test_path, paths_test_path = paths_test_path)
+    print('Load model...')
+    model = load_model(model_name = model_name, dataset = dataset, threat_model = threat_model)
 
     # model prediction statistics
     mismatch_x_pred_probability = []
@@ -106,20 +216,11 @@ def val_shadow_confidence_plot(shadow_path, model_name='Liu2023Comprehensive_Swi
     correctly_class_x_pred_probability = []
     correctly_class_y_shadow_amount = []
     acc = 0
-    #output = torch.zeros(n_examples, 1000)
     
-    # model predictions
-    print('Model predicts...')
     step = 100
     for i in tqdm(range(0, n_examples, step)):
-        output = model(x_test[i:i+step])
-
-        print('Model Predictions...')
-        predicted_classes = output.max(1)[1]
-
-        #print(model)
-        sm = torch.nn.Softmax(dim=1)
-        sm_output = sm(output).tolist()
+        output, sm_output, predicted_classes = robustbench_model_predictions(model, dataset, threat_model, x_test[i:i+step])
+        sm_output = sm_output.tolist()
 
         print('Collect statictics from predictions...')
         for s in range(i, i+step):
@@ -162,34 +263,18 @@ def val_shadow_confidence_plot(shadow_path, model_name='Liu2023Comprehensive_Swi
     plt.savefig(save_path)
     print('Data is savede here: ', save_path)
 
-def val_shadow_confidence_count_plot(shadow_path, model_name='Liu2023Comprehensive_Swin-L'):
-    n_examples = 50000
-    dict_img_shadow = dict()
+def val_shadow_confidence_mean_count_one_model_plot(n_examples = 50000, shadow_path = './shadow_all_classes.txt', 
+                                     model_name='Liu2023Comprehensive_Swin-L', dataset='imagenet', threat_model='Linf',
+                                     x_test_path = 'x_test.pt', y_test_path = 'y_test.pt', paths_test_path = 'paths_test.pt'):
+    """Returns two .png images:
+    1. Correlation btw. shadow amount and number of correct/incorrect predictions on ImageNet for one model
+    2. Correlation btw. shadow amount and mean prediction confidence of correct/incorrect predictions on ImageNet for one model
 
-    # write shadow info for each class into one dict
-    # form image-shadow dict
-    print('Read shadow info...')
-    for line in open(shadow_path, 'r'):
-        lines = [i for i in line.split()]
-        dict_img_shadow[lines[0]] = float(lines[4])
-
-    print('Load data...')
-    
-    ### you can use the command 'load_imagenet' to load the max. 5000 test data samples
-    #x_test, y_test, paths_test = load_imagenet(n_examples=n_examples)
-    
-    #torch.save(x_test, 'x_test.pt')
-    #torch.save(y_test, 'y_test.pt')
-    #torch.save(paths_test, 'paths_test.pt')
-    
-    # load all test data
-    x_test = torch.load('x_test.pt')
-    y_test = torch.load('y_test.pt')
-    paths_test = torch.load('paths_test.pt')
-    print('Data loaded!')
+    """
+    dict_img_shadow = read_shadow_amount_info(shadow_path)
+    x_test, y_test, paths_test = load_torch_all_test_data(x_test_path = x_test_path, y_test_path = y_test_path, paths_test_path = paths_test_path)
     print('Load model...')
-    # load model
-    model = load_model(model_name=model_name, dataset='imagenet', threat_model='Linf')
+    model = load_model(model_name, dataset, threat_model)
 
     # model prediction statistics
     mismatch_shadow_step_1_count = np.zeros(101)
@@ -199,20 +284,11 @@ def val_shadow_confidence_count_plot(shadow_path, model_name='Liu2023Comprehensi
     correct_shadow_step_1_count_conf_pred_mean = np.zeros(101)
     correct_shadow_step_1_count_conf_pred_sum = np.zeros(101)
     acc = 0
-    #output = torch.zeros(n_examples, 1000)
-    
-    # model predictions
-    print('Model predicts...')
+
     step = 100
     for i in tqdm(range(0, n_examples, step)):
-        output = model(x_test[i:i+step])
-
-        print('Model Predictions...')
-        predicted_classes = output.max(1)[1]
-
-        #print(model)
-        sm = torch.nn.Softmax(dim=1)
-        sm_output = sm(output).tolist()
+        output, sm_output, predicted_classes = robustbench_model_predictions(model, dataset, threat_model, x_test[i:i+step])
+        sm_output = sm_output.tolist()
 
         print('Collect statictics from predictions...')
         for s in range(i, i+step):
@@ -276,35 +352,20 @@ def val_shadow_confidence_count_plot(shadow_path, model_name='Liu2023Comprehensi
     plt.savefig(save_path)
     print('Data is savede here: ', save_path)
 
-def val_shadow_confidence_count(shadow_path, model_name='Liu2023Comprehensive_Swin-L'):
-    n_examples = 50000
-    dict_img_shadow = dict()
+def val_shadow_confidence_count(n_examples = 50000, shadow_path = './shadow_all_classes.txt', 
+                                model_name='Liu2023Comprehensive_Swin-L', dataset='imagenet', threat_model='Linf',
+                                x_test_path = 'x_test.pt', y_test_path = 'y_test.pt', paths_test_path = 'paths_test.pt'):
+    """
+    Returns 
+    1. number of misclassifications and correct classifications, 
+    2. means of model's prediction confidence of misclassifications and correct classifications,
+    3. sums of model's prediction confidence of misclassifications and correct classifications,
 
-    # write shadow info for each class into one dict
-    # form image-shadow dict
-    print('Read shadow info...')
-    for line in open(shadow_path, 'r'):
-        lines = [i for i in line.split()]
-        dict_img_shadow[lines[0]] = float(lines[4])
-
-    print('Load data...')
-    
-    ### you can use the command 'load_imagenet' to load the max. 5000 test data samples
-    #x_test, y_test, paths_test = load_imagenet(n_examples=n_examples)
-    
-    #torch.save(x_test, 'x_test.pt')
-    #torch.save(y_test, 'y_test.pt')
-    #torch.save(paths_test, 'paths_test.pt')
-    
-    # load all test data
-    x_test = torch.load('x_test.pt')
-    y_test = torch.load('y_test.pt')
-    paths_test = torch.load('paths_test.pt')
-    print('Data loaded!')
+    """
+    dict_img_shadow = read_shadow_amount_info(shadow_path)
+    x_test, y_test, paths_test = load_torch_all_test_data(x_test_path = x_test_path, y_test_path = y_test_path, paths_test_path = paths_test_path)
     print('Load model...')
-    # load model
-    model = load_model(model_name=model_name, dataset='imagenet', threat_model='Linf')
-
+    model = load_model(model_name = model_name, dataset = dataset, threat_model = threat_model)
     # model prediction statistics
     mismatch_shadow_step_1_count = np.zeros(101)
     mismatch_shadow_step_1_conf_pred_mean = np.zeros(101)
@@ -313,20 +374,11 @@ def val_shadow_confidence_count(shadow_path, model_name='Liu2023Comprehensive_Sw
     correct_shadow_step_1_count_conf_pred_mean = np.zeros(101)
     correct_shadow_step_1_count_conf_pred_sum = np.zeros(101)
     acc = 0
-    #output = torch.zeros(n_examples, 1000)
-    
-    # model predictions
-    print('Model predicts...')
+
     step = 100
     for i in tqdm(range(0, n_examples, step)):
-        output = model(x_test[i:i+step])
-
-        print('Model Predictions...')
-        predicted_classes = output.max(1)[1]
-
-        #print(model)
-        sm = torch.nn.Softmax(dim=1)
-        sm_output = sm(output).tolist()
+        output, sm_output, predicted_classes = robustbench_model_predictions(model, dataset, threat_model, x_test[i:i+step])
+        sm_output = sm_output.tolist()
 
         print('Collect statictics from predictions...')
         for s in range(i, i+step):
@@ -348,9 +400,17 @@ def val_shadow_confidence_count(shadow_path, model_name='Liu2023Comprehensive_Sw
 
     return mismatch_shadow_step_1_count, mismatch_shadow_step_1_conf_pred_mean, mismatch_shadow_step_1_conf_pred_sum, correct_shadow_step_1_count, correct_shadow_step_1_count_conf_pred_mean, correct_shadow_step_1_count_conf_pred_sum
 
-def val_shadow_confidence_count_plot(shadow_path, model_name1='Liu2023Comprehensive_Swin-L', model_name2='Salman2020Do_R50'):
-    mismatch_shadow_step_1_count_m1, mismatch_shadow_step_1_conf_pred_mean_m1, mismatch_shadow_step_1_conf_pred_sum_m1, correct_shadow_step_1_count_m1, correct_shadow_step_1_count_conf_pred_mean_m1, correct_shadow_step_1_count_conf_pred_sum_m1 = val_shadow_confidence_count(shadow_path, model_name1)
-    mismatch_shadow_step_1_count_m2, mismatch_shadow_step_1_conf_pred_mean_m2, mismatch_shadow_step_1_conf_pred_sum_m2, correct_shadow_step_1_count_m2, correct_shadow_step_1_count_conf_pred_mean_m2, correct_shadow_step_1_count_conf_pred_sum_m2 = val_shadow_confidence_count(shadow_path, model_name2)
+def val_shadow_confidence_mean_count_two_models_plot(n_examples = 50000, shadow_path = './shadow_all_classes.txt', 
+                                    model_name1='Liu2023Comprehensive_Swin-L', model_name2='Salman2020Do_R50', dataset='imagenet', threat_model='Linf',
+                                    x_test_path = 'x_test.pt', y_test_path = 'y_test.pt', paths_test_path = 'paths_test.pt'):
+    """Returns two .png images:
+    1. Correlation btw. shadow amount and number of correct/incorrect predictions on ImageNet for two models
+    2. Correlation btw. shadow amount and mean prediction confidence of correct/incorrect predictions on ImageNet for two models
+
+    """
+
+    mismatch_shadow_step_1_count_m1, mismatch_shadow_step_1_conf_pred_mean_m1, mismatch_shadow_step_1_conf_pred_sum_m1, correct_shadow_step_1_count_m1, correct_shadow_step_1_count_conf_pred_mean_m1, correct_shadow_step_1_count_conf_pred_sum_m1 = val_shadow_confidence_count(n_examples, shadow_path, model_name1, dataset, threat_model, x_test_path, y_test_path, paths_test_path)
+    mismatch_shadow_step_1_count_m2, mismatch_shadow_step_1_conf_pred_mean_m2, mismatch_shadow_step_1_conf_pred_sum_m2, correct_shadow_step_1_count_m2, correct_shadow_step_1_count_conf_pred_mean_m2, correct_shadow_step_1_count_conf_pred_sum_m2 = val_shadow_confidence_count(n_examples, shadow_path, model_name2, dataset, threat_model, x_test_path, y_test_path, paths_test_path)
     
     plt.figure()    
     plt.title("Correlation btw. shadow amount and number of correct/incorrect predictions on ImageNet")
@@ -402,6 +462,10 @@ def val_shadow_confidence_count_plot(shadow_path, model_name1='Liu2023Comprehens
     print('Data is savede here: ', save_path)
 
 def all_shadow_info_txt(folder='./prediction_ImageNet-val-categories/'):
+    """
+    Returns .txt file with shadow info for all classes in imagenet val. dataset
+    
+    """
     subfolders = [ f.name for f in os.scandir(folder) if f.is_dir() ]
     list_shadow_all_path = './shadow_all_classes.txt'
 
@@ -415,7 +479,21 @@ def all_shadow_info_txt(folder='./prediction_ImageNet-val-categories/'):
                 f.write(line)
 
 if __name__ == '__main__':
-    #all_shadow_info_txt()
-    #val_shadow_confidence_plot(shadow_path='./shadow_all_classes.txt', model_name='Salman2020Do_R50')
-    #val_shadow_confidence_count_plot(shadow_path='./shadow_all_classes.txt', model_name='Salman2020Do_R50')
-    val_shadow_confidence_count_plot(shadow_path='./shadow_all_classes.txt', model_name1='Liu2023Comprehensive_Swin-L', model_name2='Salman2020Do_R50')
+    n_examples = 50000
+    shadow_path = './shadow_all_classes.txt'
+    model_name = 'Salman2020Do_R50'
+    dataset='imagenet'
+    threat_model='Linf'
+    x_test_path = 'x_test.pt'
+    y_test_path = 'y_test.pt'
+    paths_test_path = 'paths_test.pt'
+
+    """all_shadow_info_txt()"""
+    """val_shadow_confidence_plot(n_examples, shadow_path, 
+                               model_name, dataset, threat_model,
+                               x_test_path, y_test_path, paths_test_path)"""
+    """val_shadow_confidence_scatter_bar_sns(n_examples, shadow_path, model_name, 
+                                          dataset, threat_model, 
+                                          x_test_path, y_test_path, paths_test_path)"""
+    """val_shadow_confidence_mean_count_one_model_plot(n_examples, shadow_path, model_name, dataset, threat_model, x_test_path, y_test_path, paths_test_path)"""
+    val_shadow_confidence_mean_count_two_models_plot(n_examples, shadow_path, 'Liu2023Comprehensive_Swin-L', 'Salman2020Do_R50', dataset, threat_model, x_test_path, y_test_path, paths_test_path)
