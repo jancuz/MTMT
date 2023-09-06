@@ -1,22 +1,23 @@
-# A Multi-task Mean Teacher for Semi-supervised Shadow Detection
+# Our project - Role of shadows in object recognition task
+
+by Yana Kuznetcov
+
+* [Main repository](https://github.com/jancuz/ShadowProject.git)
+* Shadow amount calculation and visualization
+* Correlation analysis btw. shadow amount and prediction confidence of the robust models
+
+## based on a Multi-task Mean Teacher for Semi-supervised Shadow Detection
 
 by Zhihao Chen, Lei Zhu, Liang Wan, Song Wang, Wei Feng, and Pheng-Ann Heng [[paper link](http://openaccess.thecvf.com/content_CVPR_2020/papers/Chen_A_Multi-Task_Mean_Teacher_for_Semi-Supervised_Shadow_Detection_CVPR_2020_paper.pdf)]
 forked from [original repository](https://github.com/eraserNut/MTMT)
 
-***
-
-## Citation
+### Citation
 @inproceedings{chen20MTMT,   
 &nbsp;&nbsp;&nbsp;&nbsp;  author = {Chen, Zhihao and Zhu, Lei and Wan, Liang and Wang, Song and Feng, Wei and Heng, Pheng-Ann},    
 &nbsp;&nbsp;&nbsp;&nbsp;  title = {A Multi-task Mean Teacher for Semi-supervised Shadow Detection},    
 &nbsp;&nbsp;&nbsp;&nbsp;  booktitle = {CVPR},    
 &nbsp;&nbsp;&nbsp;&nbsp;  year  = {2020}    
 }
-
-## Our project - Role of shadows in object recognition task
-* [Main repository](https://github.com/jancuz/ShadowProject.git)
-* Shadow amount calculation and visualization
-* Correlation analysis btw. shadow amount and prediction confidence of the robust models
 
 ## Trained Model (from [original repository](https://github.com/eraserNut/MTMT))
 You can download the trained model which is reported in our paper at [BaiduNetdisk](https://pan.baidu.com/s/1yjnsjE7mDPnEaHxdtNFhhQ)(password: h52i) or [Google Drive](https://drive.google.com/file/d/1s-4BSmz9j8u2_WoUnzNYL0QjRYFEeEkU/view?usp=share_link).
