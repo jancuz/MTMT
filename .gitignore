@@ -12,3 +12,4 @@
 data/
 __pycache__/
 object_recognition_models/data/val/
+!/imgs/*.png
