@@ -352,6 +352,67 @@ def val_shadow_confidence_mean_count_one_model_plot(n_examples = 50000, shadow_p
     plt.savefig(save_path)
     print('Data is savede here: ', save_path)
 
+def val_shadow_confidence_mean_count_two_models_plot(n_examples = 50000, shadow_path = './shadow_all_classes.txt', 
+                                    model_name1='Liu2023Comprehensive_Swin-L', model_name2='Salman2020Do_R50', dataset='imagenet', threat_model='Linf',
+                                    x_test_path = 'x_test.pt', y_test_path = 'y_test.pt', paths_test_path = 'paths_test.pt'):
+    """Returns two .png images:
+    1. Correlation btw. shadow amount and number of correct/incorrect predictions on ImageNet for two models
+    2. Correlation btw. shadow amount and mean prediction confidence of correct/incorrect predictions on ImageNet for two models
+
+    """
+
+    mismatch_shadow_step_1_count_m1, mismatch_shadow_step_1_conf_pred_mean_m1, mismatch_shadow_step_1_conf_pred_sum_m1, correct_shadow_step_1_count_m1, correct_shadow_step_1_count_conf_pred_mean_m1, correct_shadow_step_1_count_conf_pred_sum_m1 = val_shadow_confidence_count(n_examples, shadow_path, model_name1, dataset, threat_model, x_test_path, y_test_path, paths_test_path)
+    mismatch_shadow_step_1_count_m2, mismatch_shadow_step_1_conf_pred_mean_m2, mismatch_shadow_step_1_conf_pred_sum_m2, correct_shadow_step_1_count_m2, correct_shadow_step_1_count_conf_pred_mean_m2, correct_shadow_step_1_count_conf_pred_sum_m2 = val_shadow_confidence_count(n_examples, shadow_path, model_name2, dataset, threat_model, x_test_path, y_test_path, paths_test_path)
+    
+    """plt.figure()    
+    plt.title("Correlation btw. shadow amount and number of correct/incorrect predictions on ImageNet")
+    plt.xlabel('Number of predictions')
+    plt.yticks(np.arange(0, 101, 5))
+    plt.xticks(np.arange(0, 10000, 1000))
+    plt.ylabel('Shadow Amount, %')
+
+    plt.hist([correct_shadow_step_1_count_m1, mismatch_shadow_step_1_count_m1, correct_shadow_step_1_count_m2, mismatch_shadow_step_1_count_m2], 
+    label=['Correctly classified ' + model_name1, 'Misclassification ' + model_name1, 'Correctly classified ' + model_name2, 'Misclassification ' + model_name2])
+    #plt.hist(mismatch_shadow_step_1_count, bins=50, histtype='step', stacked=True, fill=False, label='Misclassification')
+    plt.legend(loc="upper left")
+
+    save_path = './shadow_confidence_count_prediction_no_bins_'+model_name1+'_'+model_name2+'_two_graphs_on_one.png'
+    plt.savefig(save_path)
+    print('Data is savede here: ', save_path)"""
+
+    
+    plt.figure()    
+    plt.title("Correlation btw. shadow amount and number of correct/incorrect predictions on ImageNet")
+    plt.ylabel('Number of predictions')
+    plt.xticks(np.arange(0, 101, 5))
+    plt.xlabel('Shadow Amount, %')
+
+    plt.plot(correct_shadow_step_1_count_m1, label='Correctly classified '+model_name1)
+    plt.plot(mismatch_shadow_step_1_count_m1, label='Misclassification '+model_name1)
+    plt.plot(correct_shadow_step_1_count_m2, label='Correctly classified '+model_name2)
+    plt.plot(mismatch_shadow_step_1_count_m2, label='Misclassification '+model_name2)
+    plt.legend(loc="upper left")
+
+    save_path = './shadow_confidence_count_prediction_line_'+model_name1+'_'+model_name2+'_new.png'
+    plt.savefig(save_path)
+    print('Data is savede here: ', save_path)
+
+    plt.figure()    
+    plt.title("Correlation btw. shadow amount and mean prediction confidence of correct/incorrect predictions on ImageNet")
+    plt.xlabel('Shadow Amount, %')
+    plt.xticks(np.arange(0, 101, 5))
+    plt.ylabel('Mean Prediction Confidence, %')
+
+    plt.plot(correct_shadow_step_1_count_conf_pred_mean_m1, label='Correctly classified '+model_name1)
+    plt.plot(mismatch_shadow_step_1_conf_pred_mean_m1, label='Misclassification '+model_name1)
+    plt.plot(correct_shadow_step_1_count_conf_pred_mean_m2, label='Correctly classified '+model_name2)
+    plt.plot(mismatch_shadow_step_1_conf_pred_mean_m2, label='Misclassification '+model_name2)
+    plt.legend(loc="upper left")
+
+    save_path = './shadow_confidence_mean_prediction_'+model_name1+'_'+model_name2+'_new.png'
+    plt.savefig(save_path)
+    print('Data is savede here: ', save_path)
+
 def val_shadow_confidence_count(n_examples = 50000, shadow_path = './shadow_all_classes.txt', 
                                 model_name='Liu2023Comprehensive_Swin-L', dataset='imagenet', threat_model='Linf',
                                 x_test_path = 'x_test.pt', y_test_path = 'y_test.pt', paths_test_path = 'paths_test.pt'):
@@ -400,66 +461,75 @@ def val_shadow_confidence_count(n_examples = 50000, shadow_path = './shadow_all_
 
     return mismatch_shadow_step_1_count, mismatch_shadow_step_1_conf_pred_mean, mismatch_shadow_step_1_conf_pred_sum, correct_shadow_step_1_count, correct_shadow_step_1_count_conf_pred_mean, correct_shadow_step_1_count_conf_pred_sum
 
-def val_shadow_confidence_mean_count_two_models_plot(n_examples = 50000, shadow_path = './shadow_all_classes.txt', 
-                                    model_name1='Liu2023Comprehensive_Swin-L', model_name2='Salman2020Do_R50', dataset='imagenet', threat_model='Linf',
+def val_shadow_confidence(n_examples = 50000, shadow_path = './shadow_all_classes.txt', 
+                          model_name='Liu2023Comprehensive_Swin-L', dataset='imagenet', threat_model='Linf',
+                          x_test_path = 'x_test.pt', y_test_path = 'y_test.pt', paths_test_path = 'paths_test.pt'):
+    """
+    Returns 
+    1. number of misclassifications and correct classifications, 
+    2. means of model's prediction confidence of misclassifications and correct classifications,
+    3. sums of model's prediction confidence of misclassifications and correct classifications,
+
+    """
+    dict_img_shadow = read_shadow_amount_info(shadow_path)
+    x_test, y_test, paths_test = load_torch_all_test_data(x_test_path = x_test_path, y_test_path = y_test_path, paths_test_path = paths_test_path)
+    print('Load model...')
+    model = load_model(model_name = model_name, dataset = dataset, threat_model = threat_model)
+    # model prediction statistics
+    misclass = []
+    correct = []
+    acc = 0
+
+    step = 100
+    for i in tqdm(range(0, n_examples, step)):
+        output, sm_output, predicted_classes = robustbench_model_predictions(model, dataset, threat_model, x_test[i:i+step])
+        sm_output = sm_output.tolist()
+
+        print('Collect statictics from predictions...')
+        for s in range(i, i+step):
+            shadow_a = dict_img_shadow[paths_test[s].split('/')[-1]]
+
+            if predicted_classes[s-i] != y_test[s]:
+                misclass.append([shadow_a, sm_output[s-i][y_test[s]]*100])
+            else:
+                correct.append([shadow_a, sm_output[s-i][y_test[s]]*100])
+
+        acc += (output.max(1)[1] == y_test[i:i+step]).float().sum().item()
+        print('Correctly predicted from ' + str(n_examples) + ' images: ', str(acc))
+        print('Model accuracy: ', str(acc / x_test.shape[0]))
+        del output
+
+    return misclass, correct
+
+def val_shadow_confidence_hist_plot(n_examples = 50000, shadow_path = './shadow_all_classes.txt', 
+                                    model_name='Liu2023Comprehensive_Swin-L', dataset='imagenet', threat_model='Linf',
                                     x_test_path = 'x_test.pt', y_test_path = 'y_test.pt', paths_test_path = 'paths_test.pt'):
-    """Returns two .png images:
-    1. Correlation btw. shadow amount and number of correct/incorrect predictions on ImageNet for two models
-    2. Correlation btw. shadow amount and mean prediction confidence of correct/incorrect predictions on ImageNet for two models
+    """
+    Returns correlation btw. shadow amount and mean prediction confidence of correct/incorrect predictions on ImageNet
 
     """
 
-    mismatch_shadow_step_1_count_m1, mismatch_shadow_step_1_conf_pred_mean_m1, mismatch_shadow_step_1_conf_pred_sum_m1, correct_shadow_step_1_count_m1, correct_shadow_step_1_count_conf_pred_mean_m1, correct_shadow_step_1_count_conf_pred_sum_m1 = val_shadow_confidence_count(n_examples, shadow_path, model_name1, dataset, threat_model, x_test_path, y_test_path, paths_test_path)
-    mismatch_shadow_step_1_count_m2, mismatch_shadow_step_1_conf_pred_mean_m2, mismatch_shadow_step_1_conf_pred_sum_m2, correct_shadow_step_1_count_m2, correct_shadow_step_1_count_conf_pred_mean_m2, correct_shadow_step_1_count_conf_pred_sum_m2 = val_shadow_confidence_count(n_examples, shadow_path, model_name2, dataset, threat_model, x_test_path, y_test_path, paths_test_path)
-    
-    plt.figure()    
-    plt.title("Correlation btw. shadow amount and number of correct/incorrect predictions on ImageNet")
-    plt.xlabel('Number of predictions')
-    plt.yticks(np.arange(0, 101, 5))
-    plt.xticks(np.arange(0, 10000, 1000))
-    plt.ylabel('Shadow Amount, %')
+    misclass1, correct1 = val_shadow_confidence(n_examples, shadow_path, model_name, dataset, threat_model, x_test_path, y_test_path, paths_test_path)
+    df1_misclass = pd.DataFrame(misclass1, columns=["shadow_a", "confidence"])
+    df1_correct = pd.DataFrame(correct1, columns=["shadow_a", "confidence"])
 
-    plt.hist([correct_shadow_step_1_count_m1, mismatch_shadow_step_1_count_m1, correct_shadow_step_1_count_m2, mismatch_shadow_step_1_count_m2], 
-    label=['Correctly classified ' + model_name1, 'Misclassification ' + model_name1, 'Correctly classified ' + model_name2, 'Misclassification ' + model_name2])
-    #plt.hist(mismatch_shadow_step_1_count, bins=50, histtype='step', stacked=True, fill=False, label='Misclassification')
-    plt.legend(loc="upper left")
+    fig, axes = plt.subplots(1, 2)
+    axes[0].set(xlim =(0, 100), ylim =(0, 100))
+    axes[1].set(xlim =(0, 100), ylim =(0, 100))
+    fig.suptitle(model_name)
+    sns.histplot(df1_correct, x="confidence", y="shadow_a", ax = axes[0], legend=False, bins=20, cbar=True, cbar_kws=dict(shrink=.75), pthresh=.05, pmax=.9)
+    axes[0].set_title("Correct classified")
+    axes[0].set_xlabel('Prediction Confidence, %')
+    axes[0].set_ylabel('Shadow Amount, %')
+    sns.histplot(df1_misclass, x="confidence", y="shadow_a", ax = axes[1], legend=False, bins=20, cbar=True, color = "orange", cbar_kws=dict(shrink=.75), pthresh=.05, pmax=.9)
+    axes[1].set_title("Misclassification")
+    axes[1].set_xlabel('Prediction Confidence, %')
+    axes[1].set_ylabel(' ')
 
-    save_path = './shadow_confidence_count_prediction_no_bins_'+model_name1+'_'+model_name2+'_two_graphs_on_one.png'
-    plt.savefig(save_path)
-    print('Data is savede here: ', save_path)
+    save_path = './shadow_confidence_mean_'+model_name+'_all_test.png'
+    fig.savefig(save_path)
+    print('Data is saved here: ', save_path)
 
-    
-    plt.figure()    
-    plt.title("Correlation btw. shadow amount and number of correct/incorrect predictions on ImageNet")
-    plt.ylabel('Number of predictions')
-    plt.xticks(np.arange(0, 101, 5))
-    plt.xlabel('Shadow Amount, %')
-
-    plt.plot(correct_shadow_step_1_count_m1, label='Correctly classified '+model_name1)
-    plt.plot(mismatch_shadow_step_1_count_m1, label='Misclassification '+model_name1)
-    plt.plot(correct_shadow_step_1_count_m2, label='Correctly classified '+model_name2)
-    plt.plot(mismatch_shadow_step_1_count_m2, label='Misclassification '+model_name2)
-    plt.legend(loc="upper left")
-
-    save_path = './shadow_confidence_count_prediction_line_'+model_name1+'_'+model_name2+'_new.png'
-    plt.savefig(save_path)
-    print('Data is savede here: ', save_path)
-
-    plt.figure()    
-    plt.title("Correlation btw. shadow amount and mean prediction confidence of correct/incorrect predictions on ImageNet")
-    plt.xlabel('Shadow Amount, %')
-    plt.xticks(np.arange(0, 101, 5))
-    plt.ylabel('Mean Prediction Confidence, %')
-
-    plt.plot(correct_shadow_step_1_count_conf_pred_mean_m1, label='Correctly classified '+model_name1)
-    plt.plot(mismatch_shadow_step_1_conf_pred_mean_m1, label='Misclassification '+model_name1)
-    plt.plot(correct_shadow_step_1_count_conf_pred_mean_m2, label='Correctly classified '+model_name2)
-    plt.plot(mismatch_shadow_step_1_conf_pred_mean_m2, label='Misclassification '+model_name2)
-    plt.legend(loc="upper left")
-
-    save_path = './shadow_confidence_mean_prediction_'+model_name1+'_'+model_name2+'_new.png'
-    plt.savefig(save_path)
-    print('Data is savede here: ', save_path)
 
 def all_shadow_info_txt(folder='./prediction_ImageNet-val-categories/'):
     """
@@ -496,4 +566,5 @@ if __name__ == '__main__':
                                           dataset, threat_model, 
                                           x_test_path, y_test_path, paths_test_path)"""
     """val_shadow_confidence_mean_count_one_model_plot(n_examples, shadow_path, model_name, dataset, threat_model, x_test_path, y_test_path, paths_test_path)"""
-    val_shadow_confidence_mean_count_two_models_plot(n_examples, shadow_path, 'Liu2023Comprehensive_Swin-L', 'Salman2020Do_R50', dataset, threat_model, x_test_path, y_test_path, paths_test_path)
+    """val_shadow_confidence_mean_count_two_models_plot(n_examples, shadow_path, 'Liu2023Comprehensive_Swin-L', 'Salman2020Do_R50', dataset, threat_model, x_test_path, y_test_path, paths_test_path)"""
+    val_shadow_confidence_hist_plot(n_examples, shadow_path, model_name, dataset, threat_model, x_test_path, y_test_path, paths_test_path)
